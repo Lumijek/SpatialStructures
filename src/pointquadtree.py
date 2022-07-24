@@ -1,0 +1,175 @@
+total = [] #List to keep track of all rectangles
+class PointQuadTree:
+    def __init__(
+        self, x, y, width, height, max_points, max_depth, depth=0
+    ):  # (x, y) represent top left of rectangle
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.center = (x + width / 2, y + height / 2)
+        self.max_points = max_points
+        self.max_depth = max_depth
+        self.points = []
+        self.nodes = []  # in order: topleft, topright, bottomleft, bottomright
+        self.depth = depth
+        self.total_points_under = 0 # To know when to destroy 4 nodes and turn quadtree into leaf
+        total.append(self)  # keeps track of all the quadtrees in case you want to display/see the rectangles
+
+    def insert(self, point):
+        '''
+        Attempts to insert point into current quadtree and if can't creates
+        4 nodes and inserts into them.
+        '''
+        self.total_points_under += 1
+        if not self.nodes:
+            self.points.append(point)
+
+            if self.depth <= self.max_depth and len(self.points) > self.max_points:
+                self.subdivide()
+
+        else:
+            self.insert_to_child(point)
+
+    def insert_to_child(self, point):
+        '''
+        Inserts point to child
+        '''
+        if point.y <= self.center[1]:
+            if point.x <= self.center[0]:
+                self.nodes[0].insert(point)
+                return
+            else:
+                self.nodes[1].insert(point)
+                return
+        else:
+            if point.x <= self.center[0]:
+                self.nodes[2].insert(point)
+                return
+            else:
+                self.nodes[3].insert(point)
+                return
+
+    def subdivide(self):
+        '''
+        Creates 4 nodes for the quadtree all with same dimensions.
+        '''
+        new_width = self.width / 2
+        new_height = self.height / 2
+        new_depth = self.depth + 1
+        self.nodes = [
+            PointQuadTree(
+                self.x,
+                self.y,
+                new_width,
+                new_height,
+                self.max_points,
+                self.max_depth,
+                new_depth,
+            ),
+            PointQuadTree(
+                self.x + new_width,
+                self.y,
+                new_width,
+                new_height,
+                self.max_points,
+                self.max_depth,
+                new_depth,
+            ),
+            PointQuadTree(
+                self.x,
+                self.y + new_height,
+                new_width,
+                new_height,
+                self.max_points,
+                self.max_depth,
+                new_depth,
+            ),
+            PointQuadTree(
+                self.x + new_width,
+                self.y + new_height,
+                new_width,
+                new_height,
+                self.max_points,
+                self.max_depth,
+                new_depth,
+            ),
+        ]
+        for point in self.points:
+            self.insert_to_child(point)
+        self.points = []
+
+    def query(self, bounds, lis=None):
+        '''
+        Uses given bounds (x, y, width, height) where x and y represent top left
+        of the rectangle to search all quadtrees that intersect that region for
+        the in that region
+        '''
+        x1, y1 = (bounds[0], bounds[1])
+        x2, y2 = (bounds[0] + bounds[2], bounds[1] + bounds[3])
+        if lis == None:
+            lis = []
+
+        if self.nodes:
+            if y1 <= self.center[1]:
+                if x1 <= self.center[0]:
+                    self.nodes[0].query(bounds, lis)
+                if x2 > self.center[0]:
+                    self.nodes[1].query(bounds, lis)
+            if y2 > self.center[1]:
+                if x1 <= self.center[0]:
+                    self.nodes[2].query(bounds, lis)
+                if x2 > self.center[0]:
+                    self.nodes[3].query(bounds, lis)
+
+        for point in self.points:
+            if point.x >= x1 and point.x < x2 and point.y >= y1 and point.y < y2:
+                lis.append(point)
+        return lis
+
+    def remove(self, point):
+        '''
+        Removes point from quadtree. If point doesn't exist
+        nothing will happen.
+        '''
+        self.total_points_under -= 1
+        if not self.nodes:
+            try:
+                self.points.remove(point)
+            except:
+                self.total_points_under += 1
+
+        else:
+
+            if point.y <= self.center[1]:
+                if point.x <= self.center[0]:
+                    self.nodes[0].remove(point)
+                    return
+                else:
+                    self.nodes[1].remove(point)
+                    return
+            else:
+                if point.x <= self.center[0]:
+                    self.nodes[2].remove(point)
+                    return
+                else:
+                    self.nodes[3].remove(point)
+                    return
+
+    def cleanup(self): # only call if you have moving objects in your quadtree or are constantly removing elements
+        '''
+        Checks all 4 nodes of a quadtree and if all of them are empty it
+        destroys the 4 nodes and makes the current quadtree a leaf
+        '''
+        if self.nodes:
+            node_element_sum = 0
+            for node in self.nodes:
+                node.cleanup()
+                # print("Depth: ", node.depth, "Number of points:", len(node.points))
+                node_element_sum += node.total_points_under
+            if node_element_sum == 0:
+                total.remove(self.nodes[0])
+                total.remove(self.nodes[1])
+                total.remove(self.nodes[2])
+                total.remove(self.nodes[3])
+                self.nodes = []
