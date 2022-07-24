@@ -1,8 +1,16 @@
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+"""
+QuadTree works with any object that has a x and y variable.
+"""
+
+
 total = [] #List to keep track of all rectangles
 class PointQuadTree:
-    def __init__(
-        self, x, y, width, height, max_points, max_depth, depth=0
-    ):  # (x, y) represent top left of rectangle
+    def __init__(self, x, y, width, height, max_points, max_depth, depth=0):  # (x, y) represent top left of rectangle
         self.x = x
         self.y = y
         self.width = width
@@ -29,11 +37,11 @@ class PointQuadTree:
                 self.subdivide()
 
         else:
-            self.insert_to_child(point)
+            self.insert_to_node(point)
 
-    def insert_to_child(self, point):
+    def insert_to_node(self, point):
         '''
-        Inserts point to child
+        Inserts point to 
         '''
         if point.y <= self.center[1]:
             if point.x <= self.center[0]:
@@ -96,7 +104,7 @@ class PointQuadTree:
             ),
         ]
         for point in self.points:
-            self.insert_to_child(point)
+            self.insert_to_node(point)
         self.points = []
 
     def query(self, bounds, lis=None):
@@ -165,7 +173,6 @@ class PointQuadTree:
             node_element_sum = 0
             for node in self.nodes:
                 node.cleanup()
-                # print("Depth: ", node.depth, "Number of points:", len(node.points))
                 node_element_sum += node.total_points_under
             if node_element_sum == 0:
                 total.remove(self.nodes[0])
